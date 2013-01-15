@@ -703,6 +703,46 @@ module Hub
       exit
     end
 
+    # args
+    #   <url of project>
+    #   [<hook name>,
+    #    [<config_key], [config_value>]*
+    #   ]
+    def hook(args)
+      url_arg = args[1]
+      hook_name = args[2]
+      config_args = args.drop(3)
+      config = Hash[*config_args]
+      if config.size == 0
+        res = api_client.get "#{url_arg}/hooks"
+        res.error! unless res.success?
+        hook_metadata = res.data
+        hook_ids = Hash[hook_metadata.map{|item| [item['name'], item['id']]}]
+        if !hook_name
+          res.data.each do |hook|
+            puts "#{hook['name']}: #{hook['config'].inspect}"
+          end
+          exit
+        end
+        if hook_ids[hook_name]
+          res = api_client.get "#{url_arg}/hooks/#{hook_ids[hook_name]}"
+          res.error! unless res.success?
+          res.data['config'].each do |key, value|
+            puts "#{key}: #{value}"
+          end
+        end
+        exit
+      else
+        res = api_client.post "#{url_arg}/hooks", {
+          'name' => hook_name,
+          'config' => config,
+          'active' => true
+        }
+        res.error! unless res.success?
+        exit
+      end
+    end
+
     # $ hub version
     # > git version
     # (print hub version)
